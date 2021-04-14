@@ -1,0 +1,5 @@
+this project makes use of 
+http://www.deater.net/weave/vmwprod/apple/dos33fs.html for writing the loader to disk and formatting its text
+http://applecommander.sourceforge.net/ for writing the binary to the disk
+and
+http://www.cc65.org/ as the assembler

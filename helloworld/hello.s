@@ -9,16 +9,26 @@ MSG: .ASCIIZ "This is a test!"
 
 .segment "STARTUP"
 
-LDA #$8D ; next line
-JSR $FDED
-LDX #0
-LDA MSG,X ; load initial char
-@LP: ORA #$80
-JSR $FDED ; cout
-INX
-LDA MSG,X
-BNE @LP
-LDA #$8D ; next line
-JSR $FDED
+JSR print_message
 JMP $03D0 ; warm start
+
+print_message:
+  LDA #$8D ; next line
+  JSR $FDED
+  LDX #0
+  LDA MSG,X ; load initial char
+  @LP: ORA #$80
+  JSR $FDED ; cout
+
+  LDA #$F0 ; wait amount
+  JSR $FCA8 ; wait
+
+  INX
+  LDA MSG,X
+  BNE @LP
+
+  LDA #$8D ; next line
+  JSR $FDED
+  RTS
+
 

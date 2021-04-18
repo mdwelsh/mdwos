@@ -24,7 +24,7 @@ JSR $FDED
 LDA #10
 STA $24
 JSR print
-.ASCIIZ "(c) 1979 by Matt Welsh"
+.ASCIIZ "(c) 1985 by Matt Welsh"
 
 LDA #$8D ; newline
 JSR $FDED

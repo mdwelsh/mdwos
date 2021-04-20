@@ -9,6 +9,7 @@ all:
 	tokenize_asoft < loader.txt > build/apple_loader
 	dos33 mdwos.dsk SAVE A build/apple_loader HELLO
 	applecommander -cc65 mdwos.dsk BIN B < build/mdwos.bin
+	applecommander -cc65 mdwos.dsk IMGDATA B < hollow.bin
 
 clean:
 	rm -f build/* mdwos.dsk

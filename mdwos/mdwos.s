@@ -308,18 +308,27 @@ spin:
 
 show_picture:
   jsr HGR
-  jsr HGR2
-  lda #$20
-  sta HGRPAGE
-  jsr HCLR
+;  jsr HGR2
+;  lda #$20
+;  sta HGRPAGE
+;  jsr HCLR
 
   ldx #0
-@draw_line:
-  lda hkimg,X
-  sta HGRPAGE1,Y
+@fill_loop:
+  lda #$ff
+  sta HGRPAGE1,X
   inx
-  iny
-  jmp @draw_line
+  cpx #$f0
+  bne @fill_loop
+
+;  ldx #0
+;  ldy #0
+;@draw_line:
+;  lda hkimg,X
+;  sta HGRPAGE1,Y
+;  inx
+;  iny
+;  jmp @draw_line
   rts
 
 

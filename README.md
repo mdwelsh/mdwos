@@ -1,2 +1,3 @@
-# 6502
-Various 6502 hacks.
+# mdwOS
+
+The best operating system for the Apple II.

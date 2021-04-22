@@ -87,6 +87,14 @@ main_menu:
   JSR print
   .ASCIIZ "4. Resume and CV"
 
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  LDA #6
+  STA XCURSOR
+  JSR print
+  .ASCIIZ "5. About this website"
+
   LDA #NEWLINE ; newline
   JSR COUT
   JSR COUT
@@ -119,8 +127,14 @@ main_menu:
 
 @menu_4:
   CMP #'4'|$80
-  BNE @menu_bad
+  BNE @menu_5
   JSR resume
+  JMP main_menu
+
+@menu_5:
+  CMP #'5'|$80
+  BNE @menu_bad
+  JSR about_website
   JMP main_menu
 
 @menu_bad:
@@ -134,8 +148,6 @@ main_menu:
 
 
 about_matt:
-  JSR show_picture
-
   JSR HOME
   LDA #4
   STA XCURSOR
@@ -265,6 +277,63 @@ resume:
   JSR $FD0C ; keyin
   RTS
 
+about_website:
+  JSR HOME
+  LDA #4
+  STA XCURSOR
+  JSR print
+  .ASCIIZ "About this website"
+
+  LDA #NEWLINE
+  JSR COUT
+  LDA #4
+  STA XCURSOR
+  JSR print
+  .ASCIIZ "------------------"
+
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  JSR print
+  .ASCIIZ "This site is written by hand in 6502"
+
+  LDA #NEWLINE
+  JSR COUT
+  JSR print
+  .ASCIIZ "assembly code, running on AppleIIjs, a"
+
+  LDA #NEWLINE
+  JSR COUT
+  JSR print
+  .ASCIIZ "JavaScript-based Apple ][ emulator."
+
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  JSR print
+  .ASCIIZ "For more details and code, check out:"
+
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  JSR print
+  .ASCIIZ "https://github.com/mdwelsh/6502/mdwos"
+
+  LDA #NEWLINE
+  JSR COUT
+  JSR print
+  .ASCIIZ "https://www.scullinsteel.com/apple2/"
+
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  LDA #4
+  STA XCURSOR
+  JSR print
+  .ASCIIZ "-- Press any key to go back --"
+  JSR $FD0C ; keyin
+  RTS
+
 
 print:
   PLA
@@ -304,32 +373,6 @@ keyin:
 spin:
   @SPIN: NOP
   JMP @SPIN
-
-
-show_picture:
-  jsr HGR
-;  jsr HGR2
-;  lda #$20
-;  sta HGRPAGE
-;  jsr HCLR
-
-  ldx #0
-@fill_loop:
-  lda #$ff
-  sta HGRPAGE1,X
-  inx
-  cpx #$f0
-  bne @fill_loop
-
-;  ldx #0
-;  ldy #0
-;@draw_line:
-;  lda hkimg,X
-;  sta HGRPAGE1,Y
-;  inx
-;  iny
-;  jmp @draw_line
-  rts
 
 
 hkimg:

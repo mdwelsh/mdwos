@@ -1,0 +1,3 @@
+[submodule "apple2js"]
+	path = apple2js
+	url = git@github.com:mdwelsh/apple2js.git

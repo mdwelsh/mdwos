@@ -1,3 +1,4 @@
+all: mdwos.dsk ../apple2js/json/disks/mdwos.json
 
 splash.bin: ../graphics/splash.png
 	../img2hgr/img2hgr.py $< $@
@@ -17,15 +18,14 @@ mdwos.dsk: build/apple_loader build/mdwos.bin splash.bin mdw.bin
 	applecommander -p mdwos.dsk MDWIMG B < mdw.bin
 	applecommander -p mdwos.dsk SPLASH B < splash.bin
 
-build/mdwos.bin: build/mdw.o
+build/mdwos.bin: build/mdwos.o
 	mkdir -p build
-	ld65 -o build/mdwos.bin build/mdw.o -C apple2.cfg
+	ld65 -o build/mdwos.bin build/mdwos.o -C apple2.cfg
 
-build/mdw.o: mdw.s
+build/mdwos.o: mdwos.s
 	mkdir -p build
-	ca65 -t apple2 mdwos.s -o build/mdw.o
+	ca65 -t apple2 mdwos.s -o build/mdwos.o
 
-all: mdwos.dsk ../apple2js/json/disks/mdwos.json
 
 ../apple2js/json/disks/mdwos.json: mdwos.dsk
 	../apple2js/bin/dsk2json -c mdw -n mdwOS mdwos.dsk > ../apple2js/json/disks/mdwos.json

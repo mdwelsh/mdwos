@@ -9,7 +9,8 @@ all:
 	tokenize_asoft < loader.txt > build/apple_loader
 	dos33 mdwos.dsk SAVE A build/apple_loader HELLO
 	applecommander -cc65 mdwos.dsk BIN B < build/mdwos.bin
-	applecommander -p mdwos.dsk IMGDATA B < mdw.bin
+	applecommander -p mdwos.dsk MDWIMG B < mdw.bin
+	applecommander -p mdwos.dsk SPLASH B < mdw.bin
 	../apple2js/bin/dsk2json -c mdw -n mdwOS mdwos.dsk > ../apple2js/json/disks/mdwos.json
 	cd ../apple2js && ./bin/index
 

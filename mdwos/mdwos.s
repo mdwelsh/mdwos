@@ -27,7 +27,9 @@ TEXT = $FB36
 HPOSN = $F411
 WAIT = $FCA8
 HGRPAGE1 = $2000
-
+OPENLINKURL = $C06A
+OPENLINKURL2 = $C06B
+OPENLINK = $C06C
 
 ; Main program
 JSR main_menu
@@ -70,7 +72,7 @@ main_menu:
   LDA #6
   STA XCURSOR
   JSR print
-  .ASCIIZ "2. Research papers"
+  .ASCIIZ "2. Research papers and talks"
 
   LDA #NEWLINE
   JSR COUT
@@ -78,7 +80,7 @@ main_menu:
   LDA #6
   STA XCURSOR
   JSR print
-  .ASCIIZ "3. Talks"
+  .ASCIIZ "3. Resume and CV"
 
   LDA #NEWLINE
   JSR COUT
@@ -86,15 +88,7 @@ main_menu:
   LDA #6
   STA XCURSOR
   JSR print
-  .ASCIIZ "4. Resume and CV"
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR COUT
-  LDA #6
-  STA XCURSOR
-  JSR print
-  .ASCIIZ "5. About this website"
+  .ASCIIZ "4. About this website"
 
   LDA #NEWLINE ; newline
   JSR COUT
@@ -117,23 +111,17 @@ main_menu:
 @menu_2:
   CMP #'2'|$80
   BNE @menu_3
-  JSR papers
+  JSR pubs
   JMP main_menu
 
 @menu_3:
   CMP #'3'|$80
   BNE @menu_4
-  JSR talks
+  JSR resume
   JMP main_menu
 
 @menu_4:
   CMP #'4'|$80
-  BNE @menu_5
-  JSR resume
-  JMP main_menu
-
-@menu_5:
-  CMP #'5'|$80
   BNE @menu_bad
   JSR about_website
   JMP main_menu
@@ -164,21 +152,47 @@ about_matt:
   JSR TEXT
   RTS
 
-papers:
+pubs:
   JSR HOME
 
   LDA #4
   STA XCURSOR
   JSR print
-  .ASCIIZ "Matt Welsh - Papers"
+  .ASCIIZ "Matt Welsh - Publications and talks"
 
   LDA #NEWLINE
   JSR COUT
   LDA #4
   STA XCURSOR
   JSR print
-  .ASCIIZ "-------------------"
+  .ASCIIZ "-----------------------------------"
 
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+
+  JSR print
+  .ASCIIZ "Would you like me to open a link to"
+  LDA #NEWLINE
+  JSR COUT
+
+  JSR print
+  .ASCIIZ "my research papers page (Y/N)?"
+
+@pubs_input:
+  JSR KEYIN
+  JSR COUT ; echo out
+
+@pubs_y:
+  CMP #'Y'|$80
+  BNE @pubs_n
+  JSR doopenlink
+  .ASCIIZ "https://www.mdw.la/pubs/"
+  RTS
+
+@pubs_n:
+  CMP #'N'|$80
+  BNE @pubs_bad
   LDA #NEWLINE
   JSR COUT
   JSR COUT
@@ -189,30 +203,14 @@ papers:
   JSR $FD0C ; keyin
   RTS
 
-talks:
-  JSR HOME
-
-  LDA #4
+@pubs_bad:
+  LDA #NEWLINE ; newline
+  JSR COUT
+  LDA #1
   STA XCURSOR
   JSR print
-  .ASCIIZ "Matt Welsh - Talks"
-
-  LDA #NEWLINE
-  JSR COUT
-  LDA #4
-  STA XCURSOR
-  JSR print
-  .ASCIIZ "------------------"
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR COUT
-  LDA #4
-  STA XCURSOR
-  JSR print
-  .ASCIIZ "-- Press any key to go back --"
-  JSR $FD0C ; keyin
-  RTS
+  .ASCIIZ "Bad input! Please type Y or N."
+  JMP @pubs_input
 
 resume:
   JSR HOME
@@ -232,12 +230,85 @@ resume:
   LDA #NEWLINE
   JSR COUT
   JSR COUT
+
+  JSR print
+  .ASCIIZ "Would you like me to open a link to"
+  LDA #NEWLINE
+  JSR COUT
+
+  JSR print
+  .ASCIIZ "my resume (Y/N)?"
+
+@resume_input:
+  JSR KEYIN
+  JSR COUT ; echo out
+
+@resume_y:
+  CMP #'Y'|$80
+  BNE @resume_n
+  JSR doopenlink
+  .ASCIIZ "https://www.mdw.la/mattwelsh-resume.pdf"
+  JMP @ask_cv
+
+@resume_n:
+  CMP #'N'|$80
+  BNE @resume_bad
+  JMP @ask_cv
+
+@resume_bad:
+  LDA #NEWLINE ; newline
+  JSR COUT
+  LDA #1
+  STA XCURSOR
+  JSR print
+  .ASCIIZ "Bad input! Please type Y or N."
+  JMP @resume_input
+
+@ask_cv:
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  JSR print
+  .ASCIIZ "Would you like me to open a link to"
+  LDA #NEWLINE
+  JSR COUT
+
+  JSR print
+  .ASCIIZ "my full CV (Y/N)?"
+
+@cv_input:
+  JSR KEYIN
+  JSR COUT ; echo out
+
+@cv_y:
+  CMP #'Y'|$80
+  BNE @cv_n
+  JSR doopenlink
+  .ASCIIZ "https://www.mdw.la/mattwelsh-cv.pdf"
+  RTS
+
+@cv_n:
+  CMP #'N'|$80
+  BNE @cv_bad
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
   LDA #4
   STA XCURSOR
   JSR print
   .ASCIIZ "-- Press any key to go back --"
   JSR $FD0C ; keyin
   RTS
+
+@cv_bad:
+  LDA #NEWLINE ; newline
+  JSR COUT
+  LDA #1
+  STA XCURSOR
+  JSR print
+  .ASCIIZ "Bad input! Please type Y or N."
+  JMP @cv_input
+
 
 about_website:
   JSR HOME
@@ -256,6 +327,7 @@ about_website:
   LDA #NEWLINE
   JSR COUT
   JSR COUT
+
   JSR print
   .ASCIIZ "This site is written by hand in 6502"
 
@@ -298,6 +370,10 @@ about_website:
 
 
 print:
+  ; On entry, the return address-1 is on the stack.
+  ; This will be the first byte of the string we want to print.
+  ; So, we read that 16-bit address off the stack and store
+  ; it in STPR2 / STRP2+1.
   PLA
   STA STRP2
   PLA
@@ -305,12 +381,17 @@ print:
 
   LDY #0
 @printloop:
+  ; We inc here because the address we pulled off the stack was
+  ; the return address-1.
   INC STRP2
   BNE @noc2  ; If no carry
   INC STRP2+1
 @noc2:
+  ; Load the next character
   LDA (STRP2),Y
+  ; If null, stop printing.
   BEQ @printend
+  ; Print it out.
   ORA #$80
   JSR COUT ; cout
 
@@ -319,10 +400,56 @@ print:
 
   JMP @printloop
 @printend:
+  ; Now, we take the current pointer into the string we were printing
+  ; and push it back on the stack as the return address.
+  ; This will resume execution after the string.
   LDA STRP2+1
   PHA
   LDA STRP2
   PHA
+  RTS
+
+; Open a link by writing a pointer to the memory location
+; OPENLINKURL/OPENLINKURL+1.
+doopenlink:
+  ; On entry, the return address-1 is on the stack.
+  ; This will be the first byte of the URL we want to open.
+  ; So, we read that 16-bit address off the stack and store
+  ; it in OPENLINKURL / OPENLINKURL+1.
+  PLA
+  STA OPENLINKURL
+  STA STRP2
+  PLA
+  STA OPENLINKURL2
+  STA STRP2+1
+
+  ; Before we open the link, we need to advance the return address
+  ; to the end of the URL string.
+  LDY #0
+@skipurlloop:
+  ; We inc here because the address we pulled off the stack was
+  ; the return address-1.
+  INC STRP2
+  BNE @noc3  ; If no carry
+  INC STRP2+1
+@noc3:
+  ; Load the next character
+  LDA (STRP2),Y
+  ; If null, stop skipping.
+  BEQ @skipurlend
+  JMP @skipurlloop
+@skipurlend:
+  ; Now, we take the current pointer into the string we were skipping
+  ; and push it back on the stack as the return address.
+  ; This will resume execution after the string.
+  LDA STRP2+1
+  PHA
+  LDA STRP2
+  PHA
+
+  ; Finally, jump to the link.
+  LDA OPENLINK
+
   RTS
 
 keyin:

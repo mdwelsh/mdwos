@@ -12,8 +12,12 @@ MSG2: .ASCIIZ "(c) 1979 by Matt Welsh"
 
 STRP2 = $CE  ; Address used by print function
 ; Apple II constants
+TEXTMODE = $32
+NORMAL = $FF
+INVERSE = $3F
 HOME = $FC58
 XCURSOR = $24
+YCURSOR = $25
 NEWLINE = $8D
 COUT = $FDED
 KEYIN = $FD0C
@@ -27,9 +31,13 @@ TEXT = $FB36
 HPOSN = $F411
 WAIT = $FCA8
 HGRPAGE1 = $2000
-OPENLINKURL = $C06A
-OPENLINKURL2 = $C06B
-OPENLINK = $C06C
+PRBYTE = $FDDA        ; Print accum as hex byte
+PREAD = $FB1E         ; Game controller, X=0-3, Y=value
+PBTN0 = $C061
+
+OPENLINKURL = $C06A   ; MDWOS special
+OPENLINKURL2 = $C06B  ; MDWOS special
+OPENLINK = $C06C      ; MDWOS special
 
 ; Main program
 JSR main_menu
@@ -93,13 +101,66 @@ main_menu:
   LDA #NEWLINE ; newline
   JSR COUT
   JSR COUT
+  JSR COUT
   LDA #1
   STA XCURSOR
+  LDA #NEWLINE ; newline
+  JSR COUT
   JSR print
-  .ASCIIZ "Your selection: "
+  .ASCIIZ " < Click on selection or type 1-4 >"
 
-@menu_input:
-  JSR KEYIN
+@main_menu_loop:
+  ; Read paddle 0 button
+  BIT PBTN0
+  BPL @main_menu_key
+  ; Otherwise, button was clicked.
+
+  LDA #4
+  STA XCURSOR
+  STA YCURSOR
+
+  ; Read paddle 1 (y-position)
+  LDX #1
+  JSR PREAD
+  TYA
+  JSR PRBYTE
+
+  CPY #$32  ; Lowest y-position of link
+  BCC @check_link2
+  CPY #$3B  ; Highest y-position of link
+  BCS @check_link2
+  JSR about_matt
+  JMP main_menu
+
+@check_link2:
+  CPY #$47  ; Lowest y-position of link
+  BCC @check_link3
+  CPY #$50  ; Highest y-position of link
+  BCS @check_link3
+  JSR pubs
+  JMP main_menu
+
+@check_link3:
+  CPY #$5A  ; Lowest y-position of link
+  BCC @check_link4
+  CPY #$64  ; Highest y-position of link
+  BCS @check_link4
+  JSR resume
+  JMP main_menu
+
+@check_link4:
+  CPY #$70  ; Lowest y-position of link
+  BCC @main_menu_key
+  CPY #$79  ; Highest y-position of link
+  BCS @main_menu_key
+  JSR about_website
+  JMP main_menu
+
+@main_menu_key:
+  ; Check for keypress
+  LDA $C000
+  BPL @main_menu_loop
+  STA $C010
   JSR COUT ; echo out
 
 @menu_1:
@@ -133,7 +194,7 @@ main_menu:
   STA XCURSOR
   JSR print
   .ASCIIZ "Bad input!"
-  JMP @menu_input
+  JMP @main_menu_loop
 
 
 about_matt:
@@ -148,8 +209,17 @@ about_matt:
   LDA #NEWLINE
   JSR COUT
 
-  JSR $FD0C ; keyin
+@about_matt_loop:
+  BIT PBTN0
+  BPL @about_matt_key
+  ; Otherwise, button was clicked.
   JSR TEXT
+  RTS
+@about_matt_key:
+  ; Check for keypress
+  LDA $C000
+  BPL @about_matt_loop
+  STA $C010
   RTS
 
 pubs:
@@ -349,15 +419,25 @@ about_website:
 
   LDA #NEWLINE
   JSR COUT
-  JSR COUT
   JSR print
-  .ASCIIZ "https://github.com/mdwelsh/6502/mdwos"
+  .ASCIIZ "   (these links are clickable!)"
 
   LDA #NEWLINE
   JSR COUT
+  JSR COUT
+  LDA #INVERSE
+  STA TEXTMODE
   JSR print
-  .ASCIIZ "https://www.scullinsteel.com/apple2/"
+  .ASCIIZ "GITHUB.COM/MDWELSH/MDWOS-6502"
 
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  JSR print
+  .ASCIIZ "WWW.SCULLINSTEEL.COM/APPLE2/"
+
+  LDA #NORMAL
+  STA TEXTMODE
   LDA #NEWLINE
   JSR COUT
   JSR COUT
@@ -365,9 +445,42 @@ about_website:
   STA XCURSOR
   JSR print
   .ASCIIZ "-- Press any key to go back --"
-  JSR $FD0C ; keyin
+
+@about_loop:
+  ; Read paddle 0 button
+  BIT PBTN0
+  BPL @about_key
+  ; Otherwise, button was clicked.
+
+  ; Read paddle 1 (y-position)
+  LDX #1
+  JSR PREAD
+
+  CPY #$65  ; Lowest y-position of first link
+  BCC @check_link2
+  CPY #$6F  ; Highest y-position of first link
+  BCS @check_link2
+  ; Now we know we are on the link.
+  JSR doopenlink
+  .ASCIIZ "https://github.com/mdwelsh/mdwos-6502"
   RTS
 
+@check_link2:
+  CPY #$7A  ; Lowest y-position of second link
+  BCC @about_key
+  CPY #$84  ; Highest y-position of second link
+  BCS @about_key
+  ; Now we know we are on the link.
+  JSR doopenlink
+  .ASCIIZ "https://www.scullinsteel.com/apple2/"
+  RTS
+
+@about_key:
+  ; Check for keypress
+  LDA $C000
+  BPL @about_loop
+  STA $C010
+  RTS
 
 print:
   ; On entry, the return address-1 is on the stack.
@@ -395,8 +508,8 @@ print:
   ORA #$80
   JSR COUT ; cout
 
-  LDA #$50 ; wait amount
-  JSR WAIT
+;  LDA #$10 ; wait amount
+;  JSR WAIT
 
   JMP @printloop
 @printend:

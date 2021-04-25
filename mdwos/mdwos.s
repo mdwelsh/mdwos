@@ -5,12 +5,13 @@
 .word __BSS_LOAD__ - __STARTUP_LOAD__ ; Size
 
 .segment "RODATA"
-MSG1: .ASCIIZ "MDW OS v0.1.1"
-MSG2: .ASCIIZ "(c) 1979 by Matt Welsh"
+.byte 0 ; XXX MDW - Use this elsewhere.
 
 .segment "STARTUP"
 
-STRP2 = $CE  ; Address used by print function
+PRINTPTR = $CE  ; Address used by print function
+LINKPTR = $EB   ; Address used by showlink function
+
 ; Apple II constants
 TEXTMODE = $32
 NORMAL = $FF
@@ -39,9 +40,11 @@ OPENLINKURL = $C06A   ; MDWOS special
 OPENLINKURL2 = $C06B  ; MDWOS special
 OPENLINK = $C06C      ; MDWOS special
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Main program
+
 ; Main program
 JSR main_menu
-JMP spin
 
 main_menu:
   JSR HOME
@@ -196,6 +199,8 @@ main_menu:
   .ASCIIZ "Bad input!"
   JMP @main_menu_loop
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; About Matt page
 
 about_matt:
   JSR HGR2
@@ -221,6 +226,9 @@ about_matt:
   BPL @about_matt_loop
   STA $C010
   RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Publications and talks page
 
 pubs:
   JSR HOME
@@ -270,7 +278,7 @@ pubs:
   STA XCURSOR
   JSR print
   .ASCIIZ "-- Press any key to go back --"
-  JSR $FD0C ; keyin
+  JSR KEYIN
   RTS
 
 @pubs_bad:
@@ -281,6 +289,9 @@ pubs:
   JSR print
   .ASCIIZ "Bad input! Please type Y or N."
   JMP @pubs_input
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Resume and CV page
 
 resume:
   JSR HOME
@@ -367,7 +378,7 @@ resume:
   STA XCURSOR
   JSR print
   .ASCIIZ "-- Press any key to go back --"
-  JSR $FD0C ; keyin
+  JSR KEYIN
   RTS
 
 @cv_bad:
@@ -379,6 +390,8 @@ resume:
   .ASCIIZ "Bad input! Please type Y or N."
   JMP @cv_input
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; About this website page
 
 about_website:
   JSR HOME
@@ -398,53 +411,12 @@ about_website:
   JSR COUT
   JSR COUT
 
-  JSR print
-  .ASCIIZ "This site is written by hand in 6502"
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR print
-  .ASCIIZ "assembly code, running on AppleIIjs, a"
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR print
-  .ASCIIZ "JavaScript-based Apple ][ emulator."
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR COUT
-  JSR print
-  .ASCIIZ "For more details and code, check out:"
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR print
-  .ASCIIZ "   (these links are clickable!)"
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR COUT
-  LDA #INVERSE
-  STA TEXTMODE
-  JSR print
-  .ASCIIZ "GITHUB.COM/MDWELSH/MDWOS-6502"
-
-  LDA #NEWLINE
-  JSR COUT
-  JSR COUT
-  JSR print
-  .ASCIIZ "WWW.SCULLINSTEEL.COM/APPLE2/"
-
-  LDA #NORMAL
-  STA TEXTMODE
-  LDA #NEWLINE
-  JSR COUT
-  JSR COUT
-  LDA #4
-  STA XCURSOR
-  JSR print
-  .ASCIIZ "-- Press any key to go back --"
+  ; Store address of our links in LINKPTR
+  LDA #<about_links
+  STA LINKPTR
+  LDA #>about_links
+  STA LINKPTR+1
+  JSR showlinks
 
 @about_loop:
   ; Read paddle 0 button
@@ -482,26 +454,34 @@ about_website:
   STA $C010
   RTS
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; print
+;;
+;; Prints the ASCIIZ string following the `jsr print` instruction to the screen.
 print:
   ; On entry, the return address-1 is on the stack.
   ; This will be the first byte of the string we want to print.
   ; So, we read that 16-bit address off the stack and store
-  ; it in STPR2 / STRP2+1.
+  ; it in PRINTPTR / PRINTPTR+1.
   PLA
-  STA STRP2
+  STA PRINTPTR
   PLA
-  STA STRP2+1
+  STA PRINTPTR+1
 
   LDY #0
 @printloop:
   ; We inc here because the address we pulled off the stack was
   ; the return address-1.
-  INC STRP2
+  INC PRINTPTR
   BNE @noc2  ; If no carry
-  INC STRP2+1
+  INC PRINTPTR+1
 @noc2:
   ; Load the next character
-  LDA (STRP2),Y
+  LDA (PRINTPTR),Y
   ; If null, stop printing.
   BEQ @printend
   ; Print it out.
@@ -516,14 +496,18 @@ print:
   ; Now, we take the current pointer into the string we were printing
   ; and push it back on the stack as the return address.
   ; This will resume execution after the string.
-  LDA STRP2+1
+  LDA PRINTPTR+1
   PHA
-  LDA STRP2
+  LDA PRINTPTR
   PHA
   RTS
 
-; Open a link by writing a pointer to the memory location
-; OPENLINKURL/OPENLINKURL+1.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; doopenlink
+;;
+;; Open a web page link. This is done by triggering a hack in the appleiijs 
+;; emulator that I added, which pulls the URL out of the memory address pointed
+;; to by OPENLINKURL,OPENLINKURL2.
 doopenlink:
   ; On entry, the return address-1 is on the stack.
   ; This will be the first byte of the URL we want to open.
@@ -531,10 +515,10 @@ doopenlink:
   ; it in OPENLINKURL / OPENLINKURL+1.
   PLA
   STA OPENLINKURL
-  STA STRP2
+  STA PRINTPTR
   PLA
   STA OPENLINKURL2
-  STA STRP2+1
+  STA PRINTPTR+1
 
   ; Before we open the link, we need to advance the return address
   ; to the end of the URL string.
@@ -542,12 +526,12 @@ doopenlink:
 @skipurlloop:
   ; We inc here because the address we pulled off the stack was
   ; the return address-1.
-  INC STRP2
+  INC PRINTPTR
   BNE @noc3  ; If no carry
-  INC STRP2+1
+  INC PRINTPTR+1
 @noc3:
   ; Load the next character
-  LDA (STRP2),Y
+  LDA (PRINTPTR),Y
   ; If null, stop skipping.
   BEQ @skipurlend
   JMP @skipurlloop
@@ -555,9 +539,9 @@ doopenlink:
   ; Now, we take the current pointer into the string we were skipping
   ; and push it back on the stack as the return address.
   ; This will resume execution after the string.
-  LDA STRP2+1
+  LDA PRINTPTR+1
   PHA
-  LDA STRP2
+  LDA PRINTPTR
   PHA
 
   ; Finally, jump to the link.
@@ -565,14 +549,98 @@ doopenlink:
 
   RTS
 
-keyin:
-@keyloop:
-  LDA $C000
-  BPL @keyloop
-  STA $C010
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; showlinks
+;; 
+;; LINKPTR contains first link of a page, with format as described below.
+
+showlinks:
+
+@shownextlink:
+  LDY #0
+  LDA (LINKPTR),Y  ; Index of link
+  BEQ @lastlink
+
+  LDA #'['|$80
+  JSR COUT
+  LDY #0           ; Get link index again
+  LDA (LINKPTR),Y
+  ORA #$80
+  JSR COUT
+  LDA #']'|$80
+  JSR COUT
+  LDA #' '|$80
+  JSR COUT
+
+  ; Advance LINKPTR by 65bytes so we get the first byte of the link text.
+  INC LINKPTR
+  BNE @showlinks_inc2
+  INC LINKPTR+1
+@showlinks_inc2:
+  INC LINKPTR
+  BNE @showlinks_inc3
+  INC LINKPTR+1
+@showlinks_inc3:
+  INC LINKPTR
+  BNE @showlinks_inc4
+  INC LINKPTR+1
+@showlinks_inc4:
+  INC LINKPTR
+  BNE @showlinks_inc5
+  INC LINKPTR+1
+  ; We only move 4 bytes here since we increment again in the loop below.
+
+@showlinks_inc5:
+  LDY #0
+@showlinks_printloop:
+  INC LINKPTR    ; Increment linkindex to get first byte of character.
+  BNE @showlinks_noc
+  INC LINKPTR+1
+@showlinks_noc:
+  ; Load the next character. Note that Y does not change in this loop.
+  LDA (LINKPTR),Y
+  ; If null, stop printing.
+  BEQ @showlinks_printend
+  ; Print it out.
+  ORA #$80
+  JSR COUT
+  JMP @showlinks_printloop
+@showlinks_printend:
+  LDA #NEWLINE
+  JSR COUT
+  JSR COUT
+  INC LINKPTR    ; Go to the beginning of the next link.
+  BNE @shownextlink
+  INC LINKPTR+1
+  JMP @shownextlink
+@lastlink:
   RTS
 
-spin:
-  @SPIN: NOP
-  JMP @SPIN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Page data.
 
+;; Individual link format:
+;;   - byte: index of link (if 0, this is the last link on ths page)
+;;   - byte: paddle Y min
+;;   - byte: paddle Y max
+;;   - work: Address to jsr when link clicked
+;;   - asciiz: Link text
+
+about_links:
+  .byte '1',$65,$6F
+  .word about_link_1_jump
+  .asciiz "github.com/mdwelsh/mdwos-6502"
+  .byte '2',$7a,$84
+  .word about_link_2_jump
+  .asciiz "www.scullinsteel.com/apple2"
+  .byte 0
+
+about_link_1_jump:
+  jsr doopenlink
+  .asciiz "https://github.com/mdwelsh/mdwos-6502"
+  rts
+
+about_link_2_jump:
+  jsr doopenlink
+  .asciiz "https://www.scullinsteel.com/apple2/"
+  rts

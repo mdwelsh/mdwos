@@ -121,6 +121,8 @@ about_matt:
   LDA $C000
   BPL @about_matt_loop
   STA $C010
+  ; Key was pressed
+  JSR TEXT
   JMP main_menu
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
